@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的溫馨相簿</title>
+    <style>
+        /* 定義溫暖配色的變數 */
+        :root {
+            --bg-color: #FDF8F5;       /* 溫暖的象牙白背景 */
+            --text-main: #5C4D47;      /* 深咖啡色文字 */
+            --text-muted: #8A7B76;     /* 淺咖啡色文字 */
+            --accent-color: #E8A598;   /* 柔和的蜜桃粉/暖橘色 */
+            --accent-hover: #D78F81;   /* 較深的蜜桃色 (Hover用) */
+            --card-bg: #FFFFFF;        /* 相片卡片背景 */
+            --shadow: 0 8px 24px rgba(200, 160, 150, 0.15); /* 溫暖的陰影 */
+            --border-radius: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Nunito', 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: var(--text-main);
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        /* 上傳區塊樣式 */
+        .upload-section {
+            background-color: var(--card-bg);
+            border: 2px dashed var(--accent-color);
+            border-radius: var(--border-radius);
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 40px;
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+
+        .upload-section:hover, .upload-section.dragover {
+            background-color: rgba(232, 165, 152, 0.08);
+            border-color: var(--accent-hover);
+            transform: translateY(-2px);
+        }
+
+        .upload-icon {
+            font-size: 40px;
+            color: var(--accent-color);
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        #file-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* 相簿網格樣式 */
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+        }
+
+        /* 空狀態提示 */
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* 拍立得風格卡片 */
+        .photo-card {
+            background-color: var(--card-bg);
+            padding: 12px 12px 20px 12px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            animation: fadeIn 0.5s ease-out;
+            cursor: zoom-in; /* 提示可以點擊放大 */
+        }
+
+        .photo-card:hover {
+            transform: translateY(-8px) rotate(-1deg);
+            box-shadow: 0 12px 30px rgba(200, 160, 150, 0.25);
+            z-index: 1;
+        }
+
+        .photo-card img {
+            width: 100%;
+            height: 260px;
+            object-fit: cover;
+            border-radius: 4px;
+            background-color: #f0f0f0;
+        }
+
+        /* 日期時間樣式 */
+        .photo-date {
+            margin-top: 12px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+
+        /* 刪除按鈕 */
+        .delete-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.85);
+            color: #ff6b6b;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s, background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .photo-card:hover .delete-btn {
+            opacity: 1;
+        }
+
+        .delete-btn:hover {
+            background-color: #ff6b6b;
+            color: white;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 輪播燈箱 (Lightbox) 樣式 */
+        .lightbox {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(40, 30, 25, 0.9); /* 帶有暖色調的深色背景 */
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            backdrop-filter: blur(5px);
+        }
+
+        .lightbox.active {
+            display: flex;
+        }
+
+        .lightbox-img {
+            max-width: 90%;
+            max-height: 80vh;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            object-fit: contain;
+        }
+
+        .lightbox-info {
+            color: #FFF;
+            margin-top: 15px;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+        }
+
+        .close-lightbox {
+            position: absolute;
+            top: 30px;
+            right: 40px;
+            color: white;
+            font-size: 40px;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        
+        .close-lightbox:hover { color: var(--accent-color); }
+
+        .nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: var(--accent-color);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .prev-btn { left: 30px; }
+        .next-btn { right: 30px; }
+
+        /* 響應式設計 */
+        @media (max-width: 600px) {
+            .gallery { grid-template-columns: 1fr; }
+            h1 { font-size: 2rem; }
+            .nav-btn { width: 40px; height: 40px; font-size: 18px; }
+            .prev-btn { left: 10px; }
+            .next-btn { right: 10px; }
+            .close-lightbox { top: 15px; right: 20px; font-size: 30px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>我的溫馨相簿</h1>
+        <p class="subtitle">珍藏每一個溫暖美好的瞬間</p>
+    </header>
+
+    <!-- 圖片上傳區塊 -->
+    <div class="upload-section" id="drop-zone">
+        <input type="file" id="file-input" accept="image/*" multiple>
+        <div class="upload-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+        </div>
+        <div class="upload-text">點擊或拖曳圖片至此處上傳</div>
+        <div class="upload-hint">自動儲存於瀏覽器，下次開啟不消失</div>
+    </div>
+
+    <!-- 相片展示區 -->
+    <div class="gallery" id="gallery">
+        <!-- 圖片將透過 JavaScript 動態生成在此處 -->
+    </div>
+</div>
+
+<!-- 輪播燈箱 (Lightbox) 區塊 -->
+<div id="lightbox" class="lightbox">
+    <span class="close-lightbox" id="close-lightbox">&times;</span>
+    <button class="nav-btn prev-btn" id="prev-btn">&#10094;</button>
+    <img class="lightbox-img" id="lightbox-img" src="" alt="放大預覽">
+    <div class="lightbox-info" id="lightbox-info"></div>
+    <button class="nav-btn next-btn" id="next-btn">&#10095;</button>
+</div>
+
+<script>
+    // --- 介面元素 ---
+    const fileInput = document.getElementById('file-input');
+    const gallery = document.getElementById('gallery');
+    const dropZone = document.getElementById('drop-zone');
+    
+    // Lightbox 元素
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightbox-img');
+    const lightboxInfo = document.getElementById('lightbox-info');
+    const closeLightboxBtn = document.getElementById('close-lightbox');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+
+    let currentPhotos = []; // 儲存目前顯示的所有照片資料
+    let currentLightboxIndex = 0; // 紀錄輪播圖當前的索引
+
+    // --- 資料庫 (IndexedDB) 設定 ---
+    // 使用 IndexedDB 可以不受 localStorage 5MB 限制，適合儲存圖片
+    const dbName = 'WarmGalleryDB';
+    const storeName = 'photos';
+    let db;
+
+    function initDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(dbName, 1);
+            
+            request.onupgradeneeded = (e) => {
+                db = e.target.result;
+                if (!db.objectStoreNames.contains(storeName)) {
+                    // 以 id 作為鍵值
+                    db.createObjectStore(storeName, { keyPath: 'id' });
+                }
+            };
+            
+            request.onsuccess = (e) => {
+                db = e.target.result;
+                resolve(db);
+            };
+            
+            request.onerror = (e) => reject(e.target.error);
+        });
+    }
+
+    // 儲存照片到資料庫
+    function savePhotoToDB(photoData) {
+        const transaction = db.transaction([storeName], 'readwrite');
+        const store = transaction.objectStore(storeName);
+        store.add(photoData);
+    }
+
+    // 從資料庫刪除照片
+    function deletePhotoFromDB(id) {
+        const transaction = db.transaction([storeName], 'readwrite');
+        const store = transaction.objectStore(storeName);
+        store.delete(id);
+    }
+
+    // 載入所有照片
+    function loadPhotosFromDB() {
+        const transaction = db.transaction([storeName], 'readonly');
+        const store = transaction.objectStore(storeName);
+        const request = store.getAll();
+
+        request.onsuccess = () => {
+            currentPhotos = request.result || [];
+            // 按照時間排序 (最新的在前面)
+            currentPhotos.sort((a, b) => b.timestamp - a.timestamp);
+            renderGallery();
+        };
+    }
+
+    // --- 畫面渲染邏輯 ---
+
+    // 格式化日期時間 (例如: 2026年3月16日 14:30)
+    function formatDate(timestamp) {
+        const d = new Date(timestamp);
+        const year = d.getFullYear();
+        const month = d.getMonth() + 1;
+        const date = d.getDate();
+        const hours = d.getHours().toString().padStart(2, '0');
+        const minutes = d.getMinutes().toString().padStart(2, '0');
+        return `${year}年${month}月${date}日 ${hours}:${minutes}`;
+    }
+
+    // 重新渲染整個相簿
+    function renderGallery() {
+        gallery.innerHTML = ''; // 清空現有內容
+
+        if (currentPhotos.length === 0) {
+            gallery.innerHTML = '<div class="empty-state">相簿空空的，快點擊上方上傳第一張照片吧！</div>';
+            return;
+        }
+
+        currentPhotos.forEach((photo, index) => {
+            const card = document.createElement('div');
+            card.className = 'photo-card';
+            
+            // 點擊卡片時開啟輪播
+            card.onclick = () => openLightbox(index);
+
+            const formattedDate = formatDate(photo.timestamp);
+
+            card.innerHTML = `
+                <img src="${photo.dataUrl}" alt="照片">
+                <div class="photo-date">${formattedDate}</div>
+            `;
+
+            // 獨立建立刪除按鈕，避免點擊刪除時觸發輪播
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.title = '刪除照片';
+            deleteBtn.innerHTML = '×';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation(); // 阻止事件冒泡到卡片的 onclick
+                deletePhoto(photo.id, index);
+            };
+
+            card.appendChild(deleteBtn);
+            gallery.appendChild(card);
+        });
+    }
+
+    // 刪除照片
+    function deletePhoto(id, index) {
+        if (confirm('確定要刪除這張照片嗎？')) {
+            deletePhotoFromDB(id);
+            currentPhotos.splice(index, 1);
+            renderGallery();
+        }
+    }
+
+    // --- 拖曳與上傳邏輯 ---
+    fileInput.addEventListener('change', handleFiles);
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        handleFiles({ target: { files: e.dataTransfer.files } });
+    });
+
+    function handleFiles(e) {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        Array.from(files).forEach(file => {
+            if (!file.type.startsWith('image/')) {
+                alert('請上傳圖片檔案 (JPG, PNG, GIF 等)');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const now = Date.now();
+                const photoData = {
+                    id: now.toString() + Math.random().toString(36).substring(2, 9), // 產生唯一ID
+                    dataUrl: e.target.result,
+                    timestamp: now
+                };
+
+                // 儲存到陣列並更新畫面
+                currentPhotos.unshift(photoData); // 加入到陣列最前面
+                savePhotoToDB(photoData);         // 存入資料庫
+                renderGallery();                  // 重新渲染
+            };
+            reader.readAsDataURL(file);
+        });
+
+        fileInput.value = ''; // 清空 input
+    }
+
+    // --- 輪播燈箱 (Lightbox) 邏輯 ---
+    
+    function openLightbox(index) {
+        currentLightboxIndex = index;
+        updateLightboxContent();
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden'; // 防止背景滾動
+    }
+
+    function closeLightbox() {
+        lightbox.classList.remove('active');
+        document.body.style.overflow = 'auto'; // 恢復背景滾動
+    }
+
+    function updateLightboxContent() {
+        const photo = currentPhotos[currentLightboxIndex];
+        lightboxImg.src = photo.dataUrl;
+        lightboxInfo.textContent = formatDate(photo.timestamp);
+    }
+
+    function showPrev() {
+        currentLightboxIndex = (currentLightboxIndex - 1 + currentPhotos.length) % currentPhotos.length;
+        updateLightboxContent();
+    }
+
+    function showNext() {
+        currentLightboxIndex = (currentLightboxIndex + 1) % currentPhotos.length;
+        updateLightboxContent();
+    }
+
+    // 綁定輪播按鈕事件
+    closeLightboxBtn.onclick = closeLightbox;
+    prevBtn.onclick = showPrev;
+    nextBtn.onclick = showNext;
+
+    // 點擊燈箱背景關閉
+    lightbox.onclick = (e) => {
+        if (e.target === lightbox) closeLightbox();
+    };
+
+    // 支援鍵盤左右方向鍵與 ESC 鍵
+    document.addEventListener('keydown', (e) => {
+        if (!lightbox.classList.contains('active')) return;
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowLeft') showPrev();
+        if (e.key === 'ArrowRight') showNext();
+    });
+
+    // --- 系統初始化 ---
+    window.onload = () => {
+        initDB()
+            .then(() => loadPhotosFromDB())
+            .catch(err => console.error("無法載入資料庫", err));
+    };
+
+</script>
+
+</body>
+</html>
